@@ -1,0 +1,36 @@
+name: Deploy to Dokku and GitHub
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.KNOWN_HOSTS }} >> ~/.ssh/known_hosts
+
+      - name: Tambahkan remote Dokku
+        run: |
+          git remote remove dokku || true
+          git remote add dokku dokku@${{ secrets.KNOWN_HOSTS }}:django2
+          git remote -v 
+          git fetch dokku main
+          git diff main dokku/main
+      
+      - name: Convert Shallow Clone to Full Clone
+        run: |
+          git fetch --unshallow
+
+      - name: Push ke Dokku dan GitHub
+        run: |
+          git push dokku main --force
